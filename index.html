@@ -34,7 +34,7 @@
         // Renderer létrehozása és DOM-hoz adása
         renderer = new THREE.WebGLRenderer( { antialias: true } );
         renderer.setSize( WIDTH, HEIGHT );
-        renderer.setClearColor( 0x000000 );
+        renderer.setClearColor( 0x87cefa );
         renderer.shadowMap.enabled = true;
         document.body.appendChild( renderer.domElement );
 
@@ -121,7 +121,7 @@
         mesh.castShadow = false;
 
         for (let i = 0; i < 2; i++) {
-            let sideGeometry = new THREE.CylinderGeometry( 2000, 2000, 100, 200, 10, true);
+            let sideGeometry = new THREE.CylinderGeometry( 2000, 2000, 400, 200, 10, true);
             let sideMaterial = new THREE.MeshPhongMaterial( {
                 shininess: 20,
                 specular: 0x111111,
@@ -129,12 +129,13 @@
             } );
             texture = textureLoader.load('assets/soil.jpg');
             texture.wrapS = THREE.RepeatWrapping;
-            texture.repeat.set(200, 1);
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(200, 4);
             sideMaterial.map = texture;
             let sideMesh = new THREE.Mesh( sideGeometry, sideMaterial );
             sideMesh.receiveShadow = true;
             sideMesh.castShadow = false;
-            sideMesh.position.y = i ? -100: 100;
+            sideMesh.position.y = i ? -250: 250;
             mesh.add(sideMesh);
         }
 
@@ -155,7 +156,7 @@
         camera.updateProjectionMatrix();
     }
 
-    var render = function () {
+    let render = function () {
         stats.update();
         // Újabb képkocka rajzolásának kérése.
         // Maximálisan 60 FPS-t biztosít a rendszer.
