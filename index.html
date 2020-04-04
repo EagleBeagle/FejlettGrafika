@@ -123,6 +123,10 @@
         leftLegObject.name = "leftLeg";
         let rightLegObject = new THREE.Object3D();
         rightLegObject.name = "rightLeg";
+        let leftArmObject = new THREE.Object3D();
+        leftArmObject.name = "leftArm";
+        let rightArmObject = new THREE.Object3D();
+        rightArmObject.name = "rightArm";
 
 
         // LÁBFEJEK
@@ -487,9 +491,9 @@
             new THREE.Vector3(-0.4, 14, 1.5), //nyakto bal 1
             new THREE.Vector3(0.4, 14, 1.5), //nyakto jobb 2
             new THREE.Vector3(0, 14, 1), //nyakto elol 3
-            new THREE.Vector3(0, 14.3, 2), //nyak teteje hatul 4
-            new THREE.Vector3(-0.4, 14.3, 1.5), //nyak teteje bal 5
-            new THREE.Vector3(0.4, 14.3, 1.5), //nyak teteje jobb 6
+            new THREE.Vector3(0, 14.3, 2), //nyak teteje hatul 4 *****
+            new THREE.Vector3(-0.4, 14.3, 1.5), //nyak teteje bal 5 *****
+            new THREE.Vector3(0.4, 14.3, 1.5), //nyak teteje jobb 6 *****
             new THREE.Vector3(0, 14.3, 1), //nyak teteje elol 7
 
             //Fej
@@ -500,13 +504,13 @@
             new THREE.Vector3(0, 14.8, 0.5), //orrcimpa 12
             new THREE.Vector3(0, 15.3, 0.7), //orr teteje 13
 
-            new THREE.Vector3(-0.5, 14.8, 1.5), //fej lent bal 14
-            new THREE.Vector3(0.5, 14.8, 1.5), //fej lent jobb 15
+            new THREE.Vector3(-0.5, 14.8, 1.5), //fej lent bal 14 *****
+            new THREE.Vector3(0.5, 14.8, 1.5), //fej lent jobb 15 *****
 
             new THREE.Vector3(-0.2, 15.4, 0.7), //homlok bal 16
             new THREE.Vector3(0.2, 15.4, 0.7), //homlok jobb 17
 
-            new THREE.Vector3(0, 14.8, 2.2), //fej lent hatul 18
+            new THREE.Vector3(0, 14.8, 2.2), //fej lent hatul 18 ******
 
             new THREE.Vector3(-0.5, 15.4, 1.5), //fej fent bal 19
             new THREE.Vector3(0.5, 15.4, 1.5), //fej fent jobb 20
@@ -543,21 +547,21 @@
         headGeometry.faces.push(new THREE.Face3(11, 12, 13));
 
         headGeometry.faces.push(new THREE.Face3(5, 14, 10));
-        headGeometry.faces.push(new THREE.Face3(5, 8, 10));
+        headGeometry.faces.push(new THREE.Face3(5, 8, 10)); // 20 20 20 20 20 20
         headGeometry.faces.push(new THREE.Face3(6, 15, 11));
         headGeometry.faces.push(new THREE.Face3(6, 9, 11));
 
         headGeometry.faces.push(new THREE.Face3(10, 11, 16));
         headGeometry.faces.push(new THREE.Face3(11, 16, 17));
 
-        headGeometry.faces.push(new THREE.Face3(4, 5, 18));
-        headGeometry.faces.push(new THREE.Face3(18, 14, 5));
+        headGeometry.faces.push(new THREE.Face3(16, 14, 10)); // 11 15 17
+        headGeometry.faces.push(new THREE.Face3(11, 15, 17));
         headGeometry.faces.push(new THREE.Face3(4, 18, 6));
         headGeometry.faces.push(new THREE.Face3(18, 15, 6));
 
 
-        headGeometry.faces.push(new THREE.Face3(16, 14, 10)); // 11 15 17
-        headGeometry.faces.push(new THREE.Face3(11, 15, 17));
+        headGeometry.faces.push(new THREE.Face3(4, 5, 18));
+        headGeometry.faces.push(new THREE.Face3(18, 14, 5)); // 30 30 30 30 30
         headGeometry.faces.push(new THREE.Face3(16, 19, 14));
         headGeometry.faces.push(new THREE.Face3(14, 19, 18));
         headGeometry.faces.push(new THREE.Face3(21, 19, 18));
@@ -580,20 +584,243 @@
 
         headGeometry.faces.push(new THREE.Face3(22, 23, 24));
 
-
-
         headGeometry.computeFaceNormals();
-        for (let i = 31; i < 46; i++) {
+        for (let i = 27; i < 46; i++) {
             headGeometry.faces[i].color.setHex(0x8b4513);
         }
         let headMesh = new THREE.Mesh(headGeometry, headMaterial);
         headMesh.name = "head";
         headMesh.castShadow = true;
 
+        // BAL KAR ALSÓ RÉSZE
+        let lowerLeftArmMaterial = new THREE.MeshPhongMaterial({
+            color: 0xf3b1b4,
+            shininess: 80,
+            specular: 0x001011,
+            side: THREE.DoubleSide
+        });
+
+        let lowerLeftArmGeometry = new THREE.Geometry();
+        lowerLeftArmGeometry.vertices.push(
+            new THREE.Vector3(-2.0, 11.5, 1.7), // konyok lent hatso 9
+            new THREE.Vector3(-2.0, 11.5, 1.3), // konyok lent elol 10
+            new THREE.Vector3(-2.4, 11.5, 1.7), // konyok fent hatso 11
+            new THREE.Vector3(-2.4, 11.5, 1.3), // konyok fent elol 12
+            new THREE.Vector3(-2.3, 10, 1.4), // csuklo kint elol 13
+            new THREE.Vector3(-2.3, 10, 1.6), // csuklo kint hatul 14
+            new THREE.Vector3(-2.1, 10, 1.4), // csuklo bent elol 15
+            new THREE.Vector3(-2.1, 10, 1.6), // csuklo bent hatul 16
+
+            new THREE.Vector3(-2.3, 10, 1.3), // kez kint elol 17
+            new THREE.Vector3(-2.3, 10, 1.7), // kez kint hatul 18
+            new THREE.Vector3(-2.1, 10, 1.3), // kez  bent elol 19
+            new THREE.Vector3(-2.1, 10, 1.7), // kez bent hatul 20
+            new THREE.Vector3(-2.3, 9.3, 1.3), // kez kint lent elol 21
+            new THREE.Vector3(-2.3, 9.3, 1.7), // kez kint lent hatul 22
+            new THREE.Vector3(-2.1, 9.3, 1.3), // kez bent lent elol 23
+            new THREE.Vector3(-2.1, 9.3, 1.7), // kez bent lent hatul 24
+
+
+        );
+
+
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(0, 1, 2));
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(2, 3, 1));
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(2, 3, 4));
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(4, 5, 2));
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(6, 7, 0));
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(1, 0, 6));
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(5, 7, 0));
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(0, 2, 5));
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(1, 3, 4));
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(4, 6, 1));
+
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(8, 9, 10));
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(10, 11, 9));
+
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(8, 9, 12));
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(12, 13, 9));
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(8, 10, 12));
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(12, 14, 10));
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(10, 11, 14));
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(14, 15, 11));
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(9, 11, 15));
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(15, 13, 9));
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(12, 13, 14));
+        lowerLeftArmGeometry.faces.push(new THREE.Face3(14, 15, 13));
+
+
+        lowerLeftArmGeometry.computeFaceNormals();
+
+        let lowerLeftArmMesh = new THREE.Mesh(lowerLeftArmGeometry, lowerLeftArmMaterial);
+        lowerLeftArmMesh.name = "lowerLeftArm";
+        lowerLeftArmMesh.castShadow = true;
+
+        leftArmObject.add(lowerLeftArmMesh);
+
+        // JOBB KAR ALSÓ RÉSZE
+        let lowerRightArmMaterial = new THREE.MeshPhongMaterial({
+            color: 0xf3b1b4,
+            shininess: 80,
+            specular: 0x001011,
+            side: THREE.DoubleSide
+        });
+
+        let lowerRightArmGeometry = new THREE.Geometry();
+        lowerRightArmGeometry.vertices.push(
+            new THREE.Vector3(2.0, 11.5, 1.7), // konyok lent hatso 9
+            new THREE.Vector3(2.0, 11.5, 1.3), // konyok lent elol 10
+            new THREE.Vector3(2.4, 11.5, 1.7), // konyok fent hatso 11
+            new THREE.Vector3(2.4, 11.5, 1.3), // konyok fent elol 12
+            new THREE.Vector3(2.3, 10, 1.4), // csuklo kint elol 13
+            new THREE.Vector3(2.3, 10, 1.6), // csuklo kint hatul 14
+            new THREE.Vector3(2.1, 10, 1.4), // csuklo bent elol 15
+            new THREE.Vector3(2.1, 10, 1.6), // csuklo bent hatul 16
+
+            new THREE.Vector3(2.3, 10, 1.3), // kez kint elol 17
+            new THREE.Vector3(2.3, 10, 1.7), // kez kint hatul 18
+            new THREE.Vector3(2.1, 10, 1.3), // kez  bent elol 19
+            new THREE.Vector3(2.1, 10, 1.7), // kez bent hatul 20
+            new THREE.Vector3(2.3, 9.3, 1.3), // kez kint lent elol 21
+            new THREE.Vector3(2.3, 9.3, 1.7), // kez kint lent hatul 22
+            new THREE.Vector3(2.1, 9.3, 1.3), // kez bent lent elol 23
+            new THREE.Vector3(2.1, 9.3, 1.7), // kez bent lent hatul 24
+
+
+        );
+
+
+        lowerRightArmGeometry.faces.push(new THREE.Face3(0, 1, 2));
+        lowerRightArmGeometry.faces.push(new THREE.Face3(2, 3, 1));
+        lowerRightArmGeometry.faces.push(new THREE.Face3(2, 3, 4));
+        lowerRightArmGeometry.faces.push(new THREE.Face3(4, 5, 2));
+        lowerRightArmGeometry.faces.push(new THREE.Face3(6, 7, 0));
+        lowerRightArmGeometry.faces.push(new THREE.Face3(1, 0, 6));
+        lowerRightArmGeometry.faces.push(new THREE.Face3(5, 7, 0));
+        lowerRightArmGeometry.faces.push(new THREE.Face3(0, 2, 5));
+        lowerRightArmGeometry.faces.push(new THREE.Face3(1, 3, 4));
+        lowerRightArmGeometry.faces.push(new THREE.Face3(4, 6, 1));
+
+        lowerRightArmGeometry.faces.push(new THREE.Face3(8, 9, 10));
+        lowerRightArmGeometry.faces.push(new THREE.Face3(10, 11, 9));
+
+        lowerRightArmGeometry.faces.push(new THREE.Face3(8, 9, 12));
+        lowerRightArmGeometry.faces.push(new THREE.Face3(12, 13, 9));
+        lowerRightArmGeometry.faces.push(new THREE.Face3(8, 10, 12));
+        lowerRightArmGeometry.faces.push(new THREE.Face3(12, 14, 10));
+        lowerRightArmGeometry.faces.push(new THREE.Face3(10, 11, 14));
+        lowerRightArmGeometry.faces.push(new THREE.Face3(14, 15, 11));
+        lowerRightArmGeometry.faces.push(new THREE.Face3(9, 11, 15));
+        lowerRightArmGeometry.faces.push(new THREE.Face3(15, 13, 9));
+        lowerRightArmGeometry.faces.push(new THREE.Face3(12, 13, 14));
+        lowerRightArmGeometry.faces.push(new THREE.Face3(14, 15, 13));
+
+
+        lowerRightArmGeometry.computeFaceNormals();
+
+        let lowerRightArmMesh = new THREE.Mesh(lowerRightArmGeometry, lowerRightArmMaterial);
+        lowerRightArmMesh.name = "lowerRightArm";
+        lowerRightArmMesh.castShadow = true;
+
+        rightArmObject.add(lowerRightArmMesh);
+
+
+        // BAL KAR FELSŐ RÉSZE
+        let upperLeftArmMaterial = new THREE.MeshPhongMaterial({
+            color: 0xf3b1b4,
+            shininess: 80,
+            specular: 0x001011,
+            side: THREE.DoubleSide
+        });
+
+        let upperLeftArmGeometry = new THREE.Geometry();
+        upperLeftArmGeometry.vertices.push(
+            new THREE.Vector3(-1.4, 13, 1), //mell bal 0
+            //                  new THREE.Vector3(1.4, 13, 1), //mell jobb 1
+            new THREE.Vector3(-1.4, 13.5, 2), //kezto bal hatso 1
+            new THREE.Vector3(-1.5, 13.5, 1), //kezto bal elulso 2
+            //                  new THREE.Vector3(1.4, 13.6, 2), //kezto jobb hatso 4
+            //                  new THREE.Vector3(1.5, 13.6, 1), //kezto jobb  elulso 5
+            new THREE.Vector3(-1.3, 13, 2), //hat bal kozep 3
+            //                  new THREE.Vector3(1.3, 13, 2), //hat jobb kozep 7
+            new THREE.Vector3(-2.0, 11.5, 1.7), // konyok lent hatso 8
+            new THREE.Vector3(-2.0, 11.5, 1.3), // konyok lent elol 9
+            new THREE.Vector3(-2.4, 11.5, 1.7), // konyok fent hatso 10
+            new THREE.Vector3(-2.4, 11.5, 1.3), // konyok fent elol 11
+        );
+
+        upperLeftArmGeometry.faces.push(new THREE.Face3(0, 1, 2));
+        upperLeftArmGeometry.faces.push(new THREE.Face3(2, 3, 0));
+        upperLeftArmGeometry.faces.push(new THREE.Face3(0, 3, 4));
+        upperLeftArmGeometry.faces.push(new THREE.Face3(0, 5, 4));
+        upperLeftArmGeometry.faces.push(new THREE.Face3(1, 2, 6));
+        upperLeftArmGeometry.faces.push(new THREE.Face3(2, 6, 7));
+        upperLeftArmGeometry.faces.push(new THREE.Face3(1, 3, 4));
+        upperLeftArmGeometry.faces.push(new THREE.Face3(4, 6, 1));
+        upperLeftArmGeometry.faces.push(new THREE.Face3(2, 0, 5));
+        upperLeftArmGeometry.faces.push(new THREE.Face3(5, 7, 2));
+        upperLeftArmGeometry.faces.push(new THREE.Face3(4, 5, 6));
+        upperLeftArmGeometry.faces.push(new THREE.Face3(6, 7, 5));
+
+        upperLeftArmGeometry.computeFaceNormals();
+
+        let upperLeftArmMesh = new THREE.Mesh(upperLeftArmGeometry, upperLeftArmMaterial);
+        upperLeftArmMesh.name = "upperLeftArm";
+        upperLeftArmMesh.castShadow = true;
+
+        leftArmObject.add(upperLeftArmMesh);
+
+
+        // JOBB KAR FELSŐ RÉSZE
+        let upperRightArmMaterial = new THREE.MeshPhongMaterial({
+            color: 0xf3b1b4,
+            shininess: 80,
+            specular: 0x001011,
+            side: THREE.DoubleSide
+        });
+
+        let upperRightArmGeometry = new THREE.Geometry();
+        upperRightArmGeometry.vertices.push(
+            new THREE.Vector3(1.4, 13, 1), //mell bal 0
+            //                  new THREE.Vector3(1.4, 13, 1), //mell jobb 1
+            new THREE.Vector3(1.4, 13.5, 2), //kezto bal hatso 1
+            new THREE.Vector3(1.5, 13.5, 1), //kezto bal elulso 2
+            //                  new THREE.Vector3(1.4, 13.6, 2), //kezto jobb hatso 4
+            //                  new THREE.Vector3(1.5, 13.6, 1), //kezto jobb  elulso 5
+            new THREE.Vector3(1.3, 13, 2), //hat bal kozep 3
+            //                  new THREE.Vector3(1.3, 13, 2), //hat jobb kozep 7
+            new THREE.Vector3(2.0, 11.5, 1.7), // konyok lent hatso 8
+            new THREE.Vector3(2.0, 11.5, 1.3), // konyok lent elol 9
+            new THREE.Vector3(2.4, 11.5, 1.7), // konyok fent hatso 10
+            new THREE.Vector3(2.4, 11.5, 1.3), // konyok fent elol 11
+        );
+
+        upperRightArmGeometry.faces.push(new THREE.Face3(0, 1, 2));
+        upperRightArmGeometry.faces.push(new THREE.Face3(2, 3, 0));
+        upperRightArmGeometry.faces.push(new THREE.Face3(0, 3, 4));
+        upperRightArmGeometry.faces.push(new THREE.Face3(0, 5, 4));
+        upperRightArmGeometry.faces.push(new THREE.Face3(1, 2, 6));
+        upperRightArmGeometry.faces.push(new THREE.Face3(2, 6, 7));
+        upperRightArmGeometry.faces.push(new THREE.Face3(1, 3, 4));
+        upperRightArmGeometry.faces.push(new THREE.Face3(4, 6, 1));
+        upperRightArmGeometry.faces.push(new THREE.Face3(2, 0, 5));
+        upperRightArmGeometry.faces.push(new THREE.Face3(5, 7, 2));
+        upperRightArmGeometry.faces.push(new THREE.Face3(4, 5, 6));
+        upperRightArmGeometry.faces.push(new THREE.Face3(6, 7, 5));
+
+        upperRightArmGeometry.computeFaceNormals();
+
+        let upperRightArmMesh = new THREE.Mesh(upperRightArmGeometry, upperRightArmMaterial);
+        upperRightArmMesh.name = "upperRightArm";
+        upperRightArmMesh.castShadow = true;
+
+        rightArmObject.add(upperRightArmMesh);
 
         heroObject.add(leftLegObject);
         heroObject.add(rightLegObject);
         heroObject.add(torsoMesh);
+        heroObject.add(leftArmObject);
+        heroObject.add(rightArmObject);
         heroObject.add(headMesh);
 
         return heroObject;
@@ -710,8 +937,8 @@
         // heroObject.getObjectByName("leftFoot").rotation.x += 0.01;
         //heroObject.getObjectByName("leftLeg").getObjectByName("lowerLeftLeg").rotation.x -= 0.1;
         //heroObject.getObjectByName("rightLeg").getObjectByName("lowerRightLeg").rotation.x -= 0.1;
-        groundMeshPair[0].position.z += 1;
-        groundMeshPair[1].position.z += 1;
+        //groundMeshPair[0].position.z += 1;
+        //groundMeshPair[1].position.z += 1;
 
         updateGround();
         // 3D -> 2D vetített kép kiszámítása.
