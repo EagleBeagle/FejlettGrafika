@@ -7,13 +7,41 @@
         body { margin: 0; overflow: hidden; }
         canvas { width: 100%; height: 100% }
     </style>
+    <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 
 <body onload="init()">
+<div id="infoDiv">
+    <h1>
+        FUTÓS JÁTÉK
+    </h1>
+    <h2>
+        Fuss minél messzebre anélkül, hogy akadályba ütköznél! A kezdéshez nyomj SPACE-t!
+    </h2>
+    <h3>
+        Mozgás: jobbra-balra nyilak
+    </h3>
+</div>
+<div id="gameOverDiv">
+    <h1>
+        JÁTÉK VÉGE
+    </h1>
+    <h2 id="endScore">
+        Pontszám: 100
+    </h2>
+    <h2>
+        Új játék kezdéséhez nyomj SPACE-t!
+    </h2>
+</div>
+<div id="scoreDiv">
+    <p id="score">
+        Pontszám: 0
+    </p>
+</div>
 <script src="js/three.js"></script>
 <script src="js/tween.min.js"></script>
 <script src="js/ThreeBSP.js"></script>
-<script src="js/TrackballControls.js"></script>
+<script src="js/OrbitControls.js"></script>
 <script src="js/stats.min.js"></script>
 
 
@@ -24,9 +52,13 @@
     var scene, camera;
     var controls;
     let textureLoader = new THREE.TextureLoader();
+
+    //A végtelen pályát úgy oldottam meg, hogy minden objektumból kettő létezik egyszerre,
+    //melyek futószalagszerűen váltogatják egymást, folyamatos látványt eredményezve
     let groundMeshPair = [];
     let forestMeshPair = [];
     let obstacleGroupPair = [];
+
     let currentGroundMesh = 0;
     let heroObject;
     let stats;
@@ -34,9 +66,17 @@
     let groundUpdateNeeded = false;
     let leftKeyPressed = false;
     let rightKeyPressed = false;
+    let spacePressed = false;
     let firstGeneratedPlane = true;
     let obstacleMesh;
-    let WORLD_SPEED = 1;
+    let WORLD_SPEED = 0;
+    let gameStarted = false;
+    let gameOver = false;
+    let score = 0;
+    let infoHTML;
+    let gameOverHTML;
+    let scoreDivHTML;
+    let scoreHTML;
 
     function init() {
         // Böngésző ablakméret lekérése és méretarány számítása
@@ -45,7 +85,7 @@
         aspectRatio = WIDTH / HEIGHT;
 
         // Renderer létrehozása és DOM-hoz adása
-        renderer = new THREE.WebGLRenderer( { antialias: true } );
+        renderer = new THREE.WebGLRenderer( { antialias: true, alpha: true } );
         renderer.setSize( WIDTH, HEIGHT );
         renderer.setClearColor( 0x87cefa );
         renderer.shadowMap.enabled = true;
@@ -53,14 +93,10 @@
 
         // Színtér létrehozása
         scene = new THREE.Scene();
-
-        // Kamera létrehozása és vetítési paramétereinek beállítása
-        camera = new THREE.PerspectiveCamera( 75, aspectRatio, 0.1, 1000 );
-        camera.position.set( 0, 20, 20 );
-        camera.lookAt( scene.position );
+        scene.fog = new THREE.FogExp2(0xa9a9a9, 0.003);
 
         // Talaj
-        groundMeshPair[0] = createGround(0); //plane hosszúságtól függ
+        groundMeshPair[0] = createGround(0);
         groundMeshPair[1] = createGround(-1000);
         // groundMeshPair[1].material.wireframe = true;
         scene.add(groundMeshPair[0]);
@@ -73,18 +109,21 @@
         forestMeshPair[1].position.z -= 1000;
         scene.add(forestMeshPair[1]);
 
-        //Hős
+        //Hős létrehozása, saját felszínhálóval csináltam háromszögenként
         heroObject = createHero();
         scene.add(heroObject);
 
-        //Akadály
+        //Akadályok inicializálása és kezdeti elhelyezése
         obstacleMesh = createObstacleMesh();
         obstacleGroupPair[0] = [];
         obstacleGroupPair[1] = [];
         initializeObstacles();
         placeAndRemoveObstacles(true);
 
-        // Fény
+        // Fények
+        var ambientLight = new THREE.AmbientLight( 0xffffff, 0.5 );
+        scene.add(ambientLight);
+
         let dLight = new THREE.DirectionalLight( 0xdddddd, 1 );
         dLight.position.set( 0, 100, -100);
         dLight.target = heroObject;
@@ -95,29 +134,27 @@
         dLight.shadow.camera.right = 50;
         dLight.shadow.camera.top = 50;
         dLight.shadow.camera.bottom = -50;
-
-        scene.add( dLight );
-
-        // Koordináta
-        let axisHelper = new THREE.AxisHelper(20);
-        scene.add( axisHelper );
-
-        var ambientLight = new THREE.AmbientLight( 0xffffff, 0.5 );
-        scene.add( ambientLight );
+        scene.add(dLight);
 
         // Az ablak későbbi átméretezése esetén visszahívható függvény megadása
         window.addEventListener( 'resize', handleWindowResize, false );
 
+        // Kamera létrehozása és vetítési paramétereinek beállítása
+        camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
+        camera.position.set(0, 18, 30);
+        camera.lookAt(heroObject);
+
         // Kamera vezérlés
-        controls = new THREE.TrackballControls( camera, renderer.domElement );
-        controls.rotateSpeed = 5.0;
-        controls.panSpeed = 1.0;
+        controls = new THREE.OrbitControls( camera, renderer.domElement );
+        controls.autoRotateSpeed = 10;
 
         window.addEventListener("keydown", function () {
             if (event.keyCode == 37) {
                 leftKeyPressed = true;
             } else if (event.keyCode == 39) {
                 rightKeyPressed = true;
+            } else if (event.keyCode == 32) {
+                spacePressed = true;
             }
         });
 
@@ -126,26 +163,50 @@
                 leftKeyPressed = false;
             } else if (event.keyCode == 39) {
                 rightKeyPressed = false;
+            } else if (event.keyCode = 32) {
+                spacePressed = false;
             }
         });
+
+        //HTML szövegek
+        infoHTML = document.getElementById("infoDiv");
+        gameOverHTML = document.getElementById("gameOverDiv");
+        scoreDivHTML = document.getElementById("scoreDiv");
+        scoreHTML = document.getElementById("score");
+        infoHTML.style.display = "block";
+
         addStatsObject();
+
         animateHero();
         // Első képkocka rajzolása
         render();
     }
 
-    function handleMovement() {
-        if (leftKeyPressed && heroObject.position.x > -14) {
+    //Irányítás
+    function handleControls() {
+        if (!gameOver && leftKeyPressed && heroObject.position.x > -14) {
             //new TWEEN.Tween(heroObject.position.x).to(heroObject.position.x - 0.1, 10).onUpdate(() => { heroObject.position.x -= 0.1 }).start();
             heroObject.position.x -= 0.4;
         }
 
-        if (rightKeyPressed && heroObject.position.x < 14) {
+        if (!gameOver && rightKeyPressed && heroObject.position.x < 14) {
             heroObject.position.x += 0.4;
         }
+
+        if (spacePressed) {
+            if (!gameStarted) {
+                gameStarted = true;
+                infoHTML.style.display = "none";
+                WORLD_SPEED = 1;
+                scoreDivHTML.style.display = "block";
+            } else if (gameOver) {
+                location.reload();
+            }
+        }
+
     }
 
-
+    //FPS bal felső sarokban
     function addStatsObject() {
         stats = new Stats();
         stats.setMode(0);
@@ -161,6 +222,7 @@
         return Math.floor(Math.random() * (max - min + 1) + min);
     }
 
+    //Az akadály mesh-t csak egyszer hozom létre a teljesítmény végett
     function createObstacleMesh() {
         let obstacleGeometry = new THREE.DodecahedronGeometry(6);
         let obstacleMaterial = new THREE.MeshPhongMaterial({
@@ -179,6 +241,7 @@
         return obstacleMesh;
     }
 
+    //Akadályok inicializálása
     function initializeObstacles() {
         for (let i = 0; i < 10; i++) {
             let obs = obstacleMesh.clone();
@@ -194,6 +257,7 @@
         }
     }
 
+    //akadályok elhelyezése, mindig a "futószalagon" következő síkra
     function placeAndRemoveObstacles(firstTime) {
         let possibleHorizontalPositions = [-12, 0, 12];
         if (firstTime) {
@@ -218,6 +282,7 @@
         }
     }
 
+    //akadályok animálása
     function moveObstacles() {
         for (let i = 0; i < 10; i++) {
             obstacleGroupPair[0][i].position.z += WORLD_SPEED;
@@ -225,27 +290,39 @@
         }
     }
 
-    function collusionCheck() {
+    //ütközés-ellenőrzés az akadály és a hős között
+    function collisionCheck() {
         for (let i = 0; i < 10; i++) {
             let currentObstacle = obstacleGroupPair[1 - currentGroundMesh][i];
             if (!currentObstacle.passed && currentObstacle.position.z > -3 &&
                 heroObject.position.x < currentObstacle.position.x + 5.4 &&
                 heroObject.position.x > currentObstacle.position.x  - 5.4) {
-                WORLD_SPEED = 0;
+                gameOverFunc();
             } else if (!currentObstacle.passed && currentObstacle.position.z > -3) {
                 currentObstacle.passed = true;
             }
         }
     }
 
+    //játék vége
+    function gameOverFunc() {
+        gameOver = true;
+        WORLD_SPEED = 0;
+        let lookHere = heroObject.position.clone();
+        lookHere.y += 10;
+        camera.lookAt(lookHere);
+        controls.autoRotate = true;
+        gameOverHTML.style.display = "block";
+        let endScore = document.getElementById("endScore");
+        endScore.innerHTML = "Pontszám: " + Math.floor(score);
+        scoreDivHTML.style.display = "none";
+    }
+
+    //Fa létrehozása összetett geometriaként. Egyetlen fát használok elforgatva a teljesítmény növelése végett.
+    //Sok kikommentezett kísérleti kódot tartalmaz, ezért elnézést kérek.
     function generateTree() {
         let treeObject = new THREE.Object3D();
         let trunkGeometry = new THREE.CylinderGeometry(1, 3, 25, 10);
-/*        let trunkMaterial = new THREE.MeshPhongMaterial({
-            color: 0x8b4513,
-            shininess: 20,
-            specular: 0x001011
-        });*/
         let trunkMesh = new THREE.Mesh(trunkGeometry, null);
         trunkMesh.position.y = 12.5;
         //trunkMesh.position.y += 16.5;
@@ -320,16 +397,16 @@
         return { trunk: trunkMesh, greenery: greeneryMesh };
     }
 
-
-
+    //Erdő létrehozása véletlenszerűen.
+    //A nagyobb teljesítmény elérése érdekében egyetlen mesh-be egyesítettem az összes farönköt és az összes lombkoronát.
     function generateForest() {
         let forest = new THREE.Object3D();
         let trunks = new THREE.Geometry();
         let greens = new THREE.Geometry();
         let tree = generateTree();
-        let rowCount = 8; //8
+        let rowCount = 6; //8
         let rowDifference = 125; //125
-        let columnCount = 5; //5
+        let columnCount = 4; //5
         for(let i = 0; i < 2; i++) {
             for (let j = 0; j < rowCount; j++) {
                 for (let k = 0; k < columnCount; k++) {
@@ -353,17 +430,15 @@
                 }
             }
         }
-        let trunkMaterial = new THREE.MeshPhongMaterial({
+        let trunkMaterial = new THREE.MeshLambertMaterial({
             color: 0x8b4513,
-            shininess: 20,
-            specular: 0x001011
+            shininess: 20
         });
         let trunkMesh = new THREE.Mesh(trunks, trunkMaterial);
 
-        let greeneryMaterial = new THREE.MeshPhongMaterial({
+        let greeneryMaterial = new THREE.MeshLambertMaterial({
             color: 0x2f7532,
-            shininess: 20,
-            specular: 0x001011
+            shininess: 20
         });
 
         let greeneryMesh = new THREE.Mesh(greens, greeneryMaterial);
@@ -373,6 +448,8 @@
         return forest;
     }
 
+    //Hős létrehozása. Kézzel csináltam háromszöghálót használva.
+    //Az animációt elősegítve a végtagokat csoportokba rendeztem és elmozgattam a megfelelő tengelyek körül.
     function createHero() {
         let heroObject = new THREE.Object3D();
 
@@ -418,7 +495,6 @@
             new THREE.Vector3(-1, 0.1, -1), //jobb elülső
             new THREE.Vector3(-1, 0.1, 2), //jobb hátsó
 
-            //Magasság
             new THREE.Vector3(-1.8, 1, 1), //bal közép
             new THREE.Vector3(-1.5, 0.6, 2.1), //sarok
             new THREE.Vector3(-1.2, 1, 1) //jobb közép
@@ -464,17 +540,14 @@
 
         let leftLegGeometry = new THREE.Geometry();
         leftLegGeometry.vertices.push(
-            //Magasság
             new THREE.Vector3(-1.8, 1, 1), //labfej bal közép
             new THREE.Vector3(-1.5, 0.6, 2.1), //labfej sarok
             new THREE.Vector3(-1.2, 1, 1), //labfej jobb közép
             new THREE.Vector3(-1.6, 4.7, 2), //bal hatso
             new THREE.Vector3(-1.2, 4.7, 2), //jobb hatso
             new THREE.Vector3(-1.5, 4.5, 1.2), //terd alja
-
             new THREE.Vector3(-1.5, 4.9, 1.15), //terd teteje
 
-            //new THREE.Vector3(-3)
         );
 
         leftLegGeometry.faces.push(new THREE.Face3(0, 1, 3));
@@ -508,17 +581,13 @@
 
         let rightLegGeometry = new THREE.Geometry();
         rightLegGeometry.vertices.push(
-            //Magasság
             new THREE.Vector3(1.8, 1, 1), //labfej bal közép
             new THREE.Vector3(1.5, 0.6, 2.1), //labfej sarok
             new THREE.Vector3(1.2, 1, 1), //labfej jobb közép
             new THREE.Vector3(1.6, 4.7, 2), //bal hatso
             new THREE.Vector3(1.2, 4.7, 2), //jobb hatso
             new THREE.Vector3(1.5, 4.5, 1.2), //terd alja
-
             new THREE.Vector3(1.5, 4.9, 1.15), //terd teteje
-
-            //new THREE.Vector3(-3)
         );
 
         rightLegGeometry.faces.push(new THREE.Face3(0, 1, 3));
@@ -557,7 +626,6 @@
 
         let leftThighGeometry = new THREE.Geometry();
         leftThighGeometry.vertices.push(
-            //Magasság
             new THREE.Vector3(-1.6, 4.7, 2), //labszar bal hatso
             new THREE.Vector3(-1.2, 4.7, 2), //labszar jobb hatso
             new THREE.Vector3(-1.5, 4.9, 1.15), //terd teteje
@@ -567,11 +635,6 @@
             new THREE.Vector3(-1.5, 8.6, 1.5), //comb bal kozep teteje
             new THREE.Vector3(-1.2, 8.5, 0.9), //comb elulso teteje
 
-
-            /*new THREE.Vector3(-2.5, 4.9, 1.15), //terd teteje
-            new THREE.Vector3(-2.5, 4.9, 1.15), //terd teteje*/
-
-            //new THREE.Vector3(-3)
         );
 
         leftThighGeometry.faces.push(new THREE.Face3(1, 2, 3));
@@ -601,7 +664,6 @@
 
         let rightThighGeometry = new THREE.Geometry();
         rightThighGeometry.vertices.push(
-            //Magasság
             new THREE.Vector3(1.6, 4.7, 2), //labszar bal hatso
             new THREE.Vector3(1.2, 4.7, 2), //labszar jobb hatso
             new THREE.Vector3(1.5, 4.9, 1.15), //terd teteje
@@ -611,11 +673,6 @@
             new THREE.Vector3(1.5, 8.6, 1.5), //comb bal kozep teteje
             new THREE.Vector3(1.2, 8.5, 0.9), //comb elulso teteje
 
-
-            /*new THREE.Vector3(-2.5, 4.9, 1.15), //terd teteje
-            new THREE.Vector3(-2.5, 4.9, 1.15), //terd teteje*/
-
-            //new THREE.Vector3(-3)
         );
 
         rightThighGeometry.faces.push(new THREE.Face3(1, 2, 3));
@@ -655,7 +712,6 @@
 
         let torsoGeometry = new THREE.Geometry();
         torsoGeometry.vertices.push(
-            //Magasság
             new THREE.Vector3(-0.5, 8, 1.5), //bal comb jobb kozep teteje
             new THREE.Vector3(-1.5, 8.5, 2), //bal comb hatso kozep
             new THREE.Vector3(-1.5, 8.6, 1.5), //bal comb bal kozep teteje
@@ -683,7 +739,6 @@
             new THREE.Vector3(-1.3, 13, 2), //hat bal kozep 21
             new THREE.Vector3(1.3, 13, 2), //hat jobb kozep 22
 
-            //EZEK KELLENEK A KEZEKHEZ
             new THREE.Vector3(-1.4, 13, 1), //mell bal 23
             new THREE.Vector3(1.4, 13, 1), //mell jobb 24
             new THREE.Vector3(0, 13, 0.9), //mell kozep 25
@@ -692,7 +747,6 @@
             new THREE.Vector3(1.4, 13.6, 2), //kezto jobb hatso 28
             new THREE.Vector3(1.5, 13.6, 1), //kezto jobb  elulso 29
 
-            //EZEK KELLENEK A FEJHEZ
             new THREE.Vector3(0, 14, 2), // nyakto hatul 30
             new THREE.Vector3(-0.4, 14, 1.5), //nyakto bal 31
             new THREE.Vector3(0.4, 14, 1.5), //nyakto jobb 32
@@ -1057,13 +1111,9 @@
         let upperLeftArmGeometry = new THREE.Geometry();
         upperLeftArmGeometry.vertices.push(
             new THREE.Vector3(-1.4, 13, 1), //mell bal 0
-            //                  new THREE.Vector3(1.4, 13, 1), //mell jobb 1
             new THREE.Vector3(-1.4, 13.5, 2), //kezto bal hatso 1
             new THREE.Vector3(-1.5, 13.5, 1), //kezto bal elulso 2
-            //                  new THREE.Vector3(1.4, 13.6, 2), //kezto jobb hatso 4
-            //                  new THREE.Vector3(1.5, 13.6, 1), //kezto jobb  elulso 5
             new THREE.Vector3(-1.3, 13, 2), //hat bal kozep 3
-            //                  new THREE.Vector3(1.3, 13, 2), //hat jobb kozep 7
             new THREE.Vector3(-2.0, 11.5, 1.7), // konyok lent hatso 8
             new THREE.Vector3(-2.0, 11.5, 1.3), // konyok lent elol 9
             new THREE.Vector3(-2.4, 11.5, 1.7), // konyok fent hatso 10
@@ -1109,13 +1159,9 @@
 
         let upperRightArmGeometry = new THREE.Geometry();
         upperRightArmGeometry.vertices.push(
-            //new THREE.Vector3(1.4, 13, 1), //mell bal 0
             new THREE.Vector3(1.4, 13, 1), //mell jobb 1
-            //new THREE.Vector3(1.4, 13.5, 2), //kezto bal hatso 1
-            //new THREE.Vector3(1.5, 13.5, 1), //kezto bal elulso 2
             new THREE.Vector3(1.4, 13.6, 2), //kezto jobb hatso 4
             new THREE.Vector3(1.5, 13.6, 1), //kezto jobb  elulso 5
-            //new THREE.Vector3(1.3, 13, 2), //hat bal kozep 3
             new THREE.Vector3(1.3, 13, 2), //hat jobb kozep 7
             new THREE.Vector3(2.0, 11.5, 1.7), // konyok lent hatso 8
             new THREE.Vector3(2.0, 11.5, 1.3), // konyok lent elol 9
@@ -1161,6 +1207,7 @@
         return heroObject;
     }
 
+    //Hős animálása. Kulcs pozíciókat hoztam létre, és ezek között láncolt Tween átmeneteket használtam.
     function animateHero() {
         let keyFrames = [{
             lowerLeftLeg: -50,
@@ -1252,6 +1299,8 @@
 
     }
 
+
+    //Segédfüggvény a hős pozíciójának beállítására
     function setHeroPositions(pos) {
         heroObject.getObjectByName("lowerLeftLeg").rotation.x = THREE.Math.degToRad(pos.lowerLeftLeg);
         heroObject.getObjectByName("leftLeg").rotation.x = THREE.Math.degToRad(pos.leftLeg);
@@ -1262,6 +1311,8 @@
         heroObject.getObjectByName("lowerRightArm").rotation.x = THREE.Math.degToRad(pos.lowerRightArm);
         heroObject.getObjectByName("rightArm").rotation.x = THREE.Math.degToRad(pos.rightArm);
     }
+
+    //Talaj létrehozása
     function createGround(startingPos) {
         let middleGeometry = new THREE.PlaneGeometry( 40, PLANE_SIZE);
         let middleMaterial = new THREE.MeshPhongMaterial( {
@@ -1302,7 +1353,9 @@
         return mesh;
     }
 
-    function updateGround() {
+    //Világ végtelenítése. Ha közel érünk a legenerált sík végéhez,
+    // a már rég elhagyott objektumok észrevétlenül hátulról előlre kerülnek.
+    function updateWorld() {
         if (groundMeshPair[currentGroundMesh].position.z >= 0 && !groundUpdateNeeded) {
             groundUpdateNeeded = true;
             currentGroundMesh = 1 - currentGroundMesh;
@@ -1331,6 +1384,12 @@
         }
     }
 
+    //Pontszám kiírása
+    function displayScore() {
+        scoreHTML.innerHTML = "Pontszám: " + Math.floor(score);
+    }
+
+    //Ablak átméretezésének kezelése
     function handleWindowResize() {
         // Az ablak átméretezése esetén a kamera vetítési paraméterek újraszámolása
         HEIGHT = window.innerHeight;
@@ -1342,29 +1401,33 @@
         camera.updateProjectionMatrix();
     }
 
+    //Renderelés
     let render = function () {
         stats.update();
-        // Újabb képkocka rajzolásának kérése.
-        // Maximálisan 60 FPS-t biztosít a rendszer.
         requestAnimationFrame( render );
+
         // Kamera vezérlés
         controls.update();
-        TWEEN.update();
-        // heroObject.getObjectByName("leftFoot").rotation.x += 0.01;
-        //heroObject.getObjectByName("leftLeg").getObjectByName("lowerLeftLeg").rotation.x -= 0.1;
-        //heroObject.getObjectByName("rightLeg").getObjectByName("lowerRightLeg").rotation.x -= 0.1;
+
+        if (gameStarted) {
+            TWEEN.update();
+        }
+
+        if (gameStarted && !gameOver) {
+            score += 0.01;
+        }
+
         groundMeshPair[0].position.z += WORLD_SPEED;
         groundMeshPair[1].position.z += WORLD_SPEED;
         forestMeshPair[0].position.z += WORLD_SPEED;
         forestMeshPair[1].position.z += WORLD_SPEED;
 
+        displayScore();
         moveObstacles();
-        collusionCheck();
+        collisionCheck();
+        handleControls();
+        updateWorld();
 
-        handleMovement();
-        updateGround();
-        // 3D -> 2D vetített kép kiszámítása.
-        // scene 3D színtér képe a camera kamera szemszögéből.
         renderer.render( scene, camera );
     };
 
