@@ -12,6 +12,7 @@
 <body onload="init()">
 <script src="js/three.js"></script>
 <script src="js/tween.min.js"></script>
+<script src="js/ThreeBSP.js"></script>
 <script src="js/TrackballControls.js"></script>
 <script src="js/stats.min.js"></script>
 
@@ -24,14 +25,18 @@
     var controls;
     let textureLoader = new THREE.TextureLoader();
     let groundMeshPair = [];
+    let forestMeshPair = [];
+    let obstacleGroupPair = [];
     let currentGroundMesh = 0;
     let heroObject;
-    let forestObject;
     let stats;
-    let PLANE_SIZE = 2000;
+    let PLANE_SIZE = 1000;
     let groundUpdateNeeded = false;
     let leftKeyPressed = false;
     let rightKeyPressed = false;
+    let firstGeneratedPlane = true;
+    let obstacleMesh;
+    let WORLD_SPEED = 1;
 
     function init() {
         // Böngésző ablakméret lekérése és méretarány számítása
@@ -56,14 +61,28 @@
 
         // Talaj
         groundMeshPair[0] = createGround(0); //plane hosszúságtól függ
-        groundMeshPair[1] = createGround(-2000);
+        groundMeshPair[1] = createGround(-1000);
         // groundMeshPair[1].material.wireframe = true;
         scene.add(groundMeshPair[0]);
         scene.add(groundMeshPair[1]);
 
+        //Erdő
+        forestMeshPair[0] = generateForest();
+        forestMeshPair[1] = generateForest();
+        scene.add(forestMeshPair[0]);
+        forestMeshPair[1].position.z -= 1000;
+        scene.add(forestMeshPair[1]);
+
         //Hős
         heroObject = createHero();
         scene.add(heroObject);
+
+        //Akadály
+        obstacleMesh = createObstacleMesh();
+        obstacleGroupPair[0] = [];
+        obstacleGroupPair[1] = [];
+        initializeObstacles();
+        placeAndRemoveObstacles(true);
 
         // Fény
         let dLight = new THREE.DirectionalLight( 0xdddddd, 1 );
@@ -109,10 +128,7 @@
                 rightKeyPressed = false;
             }
         });
-
         addStatsObject();
-        forestObject = generateForest();
-        scene.add(forestObject);
         animateHero();
         // Első képkocka rajzolása
         render();
@@ -145,74 +161,215 @@
         return Math.floor(Math.random() * (max - min + 1) + min);
     }
 
+    function createObstacleMesh() {
+        let obstacleGeometry = new THREE.DodecahedronGeometry(6);
+        let obstacleMaterial = new THREE.MeshPhongMaterial({
+            color: 0xffffff,
+            shininess: 20,
+            specular: 0x001011
+        });
+        let texture = textureLoader.load('assets/stone.jpg');
+        //texture.wrapS = THREE.RepeatWrapping;
+        //texture.wrapT = THREE.RepeatWrapping;
+        //texture.repeat.set(5, 50);
+        obstacleMaterial.map = texture;
+        let obstacleMesh = new THREE.Mesh(obstacleGeometry, obstacleMaterial);
+        obstacleMesh.position.y = 4;
+        obstacleMesh.rotation.x = THREE.Math.degToRad(34);
+        return obstacleMesh;
+    }
+
+    function initializeObstacles() {
+        for (let i = 0; i < 10; i++) {
+            let obs = obstacleMesh.clone();
+            obs.passed = false; //?
+            scene.add(obs);
+            obstacleGroupPair[0].push(obs);
+        }
+        for (let i = 0; i < 10; i++) {
+            let obs = obstacleMesh.clone();
+            obs.passed = false; //?
+            scene.add(obs);
+            obstacleGroupPair[1].push(obs);
+        }
+    }
+
+    function placeAndRemoveObstacles(firstTime) {
+        let possibleHorizontalPositions = [-12, 0, 12];
+        if (firstTime) {
+            for (let i = 0; i < 10; i++) {
+                obstacleGroupPair[0][0].position.z = -10000;
+                obstacleGroupPair[0][1].position.z = -10000;
+                obstacleGroupPair[0][i].position.z = i * -100 + randomIntFromInterval(-30, 30);
+                obstacleGroupPair[0][i].position.x = possibleHorizontalPositions[randomIntFromInterval(0, 2)];
+                obstacleGroupPair[0][i].passed = false; //?
+            }
+            for (let i = 0; i < 10; i++) {
+                obstacleGroupPair[1][i].position.z = (i + 10) * -100 + randomIntFromInterval(-30, 30);
+                obstacleGroupPair[1][i].position.x = possibleHorizontalPositions[randomIntFromInterval(0, 2)];
+                obstacleGroupPair[1][i].passed = false; //?
+            }
+        } else {
+            for (let i = 0; i < 10; i++) {
+                obstacleGroupPair[currentGroundMesh][i].position.z =  (i + 10) * -100 + randomIntFromInterval(-30, 30);
+                obstacleGroupPair[currentGroundMesh][i].position.x = possibleHorizontalPositions[randomIntFromInterval(0, 2)];
+                obstacleGroupPair[currentGroundMesh][i].passed = false; //?
+            }
+        }
+    }
+
+    function moveObstacles() {
+        for (let i = 0; i < 10; i++) {
+            obstacleGroupPair[0][i].position.z += WORLD_SPEED;
+            obstacleGroupPair[1][i].position.z += WORLD_SPEED;
+        }
+    }
+
+    function collusionCheck() {
+        for (let i = 0; i < 10; i++) {
+            let currentObstacle = obstacleGroupPair[1 - currentGroundMesh][i];
+            if (!currentObstacle.passed && currentObstacle.position.z > -3 &&
+                heroObject.position.x < currentObstacle.position.x + 5.4 &&
+                heroObject.position.x > currentObstacle.position.x  - 5.4) {
+                WORLD_SPEED = 0;
+            } else if (!currentObstacle.passed && currentObstacle.position.z > -3) {
+                currentObstacle.passed = true;
+            }
+        }
+    }
+
     function generateTree() {
         let treeObject = new THREE.Object3D();
         let trunkGeometry = new THREE.CylinderGeometry(1, 3, 25, 10);
+/*        let trunkMaterial = new THREE.MeshPhongMaterial({
+            color: 0x8b4513,
+            shininess: 20,
+            specular: 0x001011
+        });*/
+        let trunkMesh = new THREE.Mesh(trunkGeometry, null);
+        trunkMesh.position.y = 12.5;
+        //trunkMesh.position.y += 16.5;
+        //trunkMesh.castShadow = true;
+
+        //let trunkBSP = new ThreeBSP(trunkMesh);
+
+        let mainGreeneryGeometry = new THREE.SphereGeometry( 8, 32, 32 );
+/*        let mainGreeneryMaterial = new THREE.MeshPhongMaterial({
+            color: 0x2f7532,
+            shininess: 20,
+            specular: 0x001011
+        });*/
+        let mainGreeneryMesh = new THREE.Mesh(mainGreeneryGeometry, null);
+
+        //mainGreeneryMesh.castShadow = true;
+        //let mainGreeneryBSP = new ThreeBSP(mainGreeneryMesh);
+
+        //let greeneryBSP = new ThreeBSP(mainGreeneryMesh);
+
+        let greenery = new THREE.Geometry();
+        mainGreeneryMesh.updateMatrix();
+        greenery.merge(mainGreeneryGeometry, mainGreeneryMesh.matrix);
+
+        let diverseGreeneryGeometry = new THREE.SphereGeometry( 8, 32, 32 );
+
+        let diverseGreeneryMesh1 = new THREE.Mesh(diverseGreeneryGeometry, null);
+        diverseGreeneryMesh1.geometry.radius = 6;
+        diverseGreeneryMesh1.position.x = -3;
+        diverseGreeneryMesh1.position.y = -2;
+        diverseGreeneryMesh1.position.z = -3;
+        diverseGreeneryMesh1.updateMatrix();
+        greenery.merge(diverseGreeneryGeometry, diverseGreeneryMesh1.matrix);
+
+        let diverseGreeneryMesh2 = diverseGreeneryMesh1.clone();
+        diverseGreeneryMesh2.geometry.radius = 4;
+        diverseGreeneryMesh2.position.x = 3;
+        diverseGreeneryMesh2.position.y = 1;
+        diverseGreeneryMesh2.position.z = 3;
+        diverseGreeneryMesh2.updateMatrix();
+        greenery.merge(diverseGreeneryGeometry, diverseGreeneryMesh2.matrix);
+
+        let diverseGreeneryMesh3 = diverseGreeneryMesh1.clone();
+        diverseGreeneryMesh3.geometry.radius = 5;
+        diverseGreeneryMesh3.position.x = 0;
+        diverseGreeneryMesh3.position.y = 3;
+        diverseGreeneryMesh3.position.z = 2;
+        diverseGreeneryMesh3.updateMatrix();
+        greenery.merge(diverseGreeneryGeometry, diverseGreeneryMesh3.matrix);
+
+        /*let possiblePositions = [-4, -3, -2, 2, 3, 4];
+        for (let i = 0; i < 3; i++) {
+            let radius = randomIntFromInterval(3, 6);
+            let instance = diverseGreeneryMesh.clone();
+            instance.position.x = possiblePositions[randomIntFromInterval(0, 3)];
+            instance.position.z = possiblePositions[randomIntFromInterval(0, 3)];
+            instance.position.y = possiblePositions[randomIntFromInterval(0, 3)];
+            instance.updateMatrix();
+            greenery.merge(diverseGreeneryGeometry, instance.matrix);
+            //greeneryBSP = greeneryBSP.union(new ThreeBSP(instance));
+        }
+
+        let greeneryMaterial = new THREE.MeshBasicMaterial({
+            color: 0x2f7532,
+            shininess: 20,
+            specular: 0x001011
+        });*/
+
+        let greeneryMesh = new THREE.Mesh(greenery, null);
+        greeneryMesh.position.y = 28;
+        treeObject.position.y = 28;
+        return { trunk: trunkMesh, greenery: greeneryMesh };
+    }
+
+
+
+    function generateForest() {
+        let forest = new THREE.Object3D();
+        let trunks = new THREE.Geometry();
+        let greens = new THREE.Geometry();
+        let tree = generateTree();
+        let rowCount = 8; //8
+        let rowDifference = 125; //125
+        let columnCount = 5; //5
+        for(let i = 0; i < 2; i++) {
+            for (let j = 0; j < rowCount; j++) {
+                for (let k = 0; k < columnCount; k++) {
+                    let random = randomIntFromInterval(-62.5, 62.5);
+                    tree.trunk.position.z = j * -1 * rowDifference + random;
+                    tree.greenery.position.z = j * -1 * rowDifference + random;
+                    if (i == 0) {
+                        random = randomIntFromInterval(-140, -20);
+                        tree.trunk.position.x = random;
+                        tree.greenery.position.x = random;
+                    } else {
+                        random = randomIntFromInterval(20, 140);
+                        tree.trunk.position.x = random;
+                        tree.greenery.position.x = random;
+                    }
+                    tree.greenery.rotation.y = THREE.Math.degToRad(randomIntFromInterval(0, 360));
+                    tree.trunk.updateMatrix();
+                    tree.greenery.updateMatrix();
+                    trunks.merge(tree.trunk.geometry, tree.trunk.matrix);
+                    greens.merge(tree.greenery.geometry, tree.greenery.matrix);
+                }
+            }
+        }
         let trunkMaterial = new THREE.MeshPhongMaterial({
             color: 0x8b4513,
             shininess: 20,
             specular: 0x001011
         });
-        let trunkMesh = new THREE.Mesh(trunkGeometry, trunkMaterial);
-        trunkMesh.position.y -= 16.5;
-        //trunkMesh.castShadow = true;
-        treeObject.add(trunkMesh);
-        let mainGreeneryGeometry = new THREE.SphereGeometry( 8, 32, 32 );
-        let mainGreeneryMaterial = new THREE.MeshPhongMaterial({
+        let trunkMesh = new THREE.Mesh(trunks, trunkMaterial);
+
+        let greeneryMaterial = new THREE.MeshPhongMaterial({
             color: 0x2f7532,
             shininess: 20,
             specular: 0x001011
         });
-        let mainGreeneryMesh = new THREE.Mesh(mainGreeneryGeometry, mainGreeneryMaterial);
 
-        //mainGreeneryMesh.castShadow = true;
-        treeObject.add(mainGreeneryMesh);
+        let greeneryMesh = new THREE.Mesh(greens, greeneryMaterial);
 
-        
-
-        let possiblePositions = [-4, -3, -2, 2, 3, 4];
-        for (let i = 0; i < 30; i++) {
-            let radius = randomIntFromInterval(3, 6);
-            let diverseGreeneryGeometry = new THREE.SphereGeometry( radius, 32, 32 );
-            let diverseGreeneryMaterial = new THREE.MeshPhongMaterial({
-                color: 0x2f7532,
-                shininess: 20,
-                specular: 0x001011
-            });
-            let diverseGreeneryMesh = new THREE.Mesh(diverseGreeneryGeometry, diverseGreeneryMaterial);
-            diverseGreeneryMesh.position.x = possiblePositions[randomIntFromInterval(0, 3)];
-            diverseGreeneryMesh.position.z = possiblePositions[randomIntFromInterval(0, 3)];
-            diverseGreeneryMesh.position.y = possiblePositions[randomIntFromInterval(0, 3)];
-
-
-            treeObject.add(diverseGreeneryMesh);
-        }
-
-
-        treeObject.rotation.y = THREE.Math.degToRad(randomIntFromInterval(0, 360));
-        treeObject.position.y = 28;
-        return treeObject;
-    }
-
-    function generateForest() {
-        let forest = new THREE.Object3D();
-        let rowCount = 2;
-        let columnCount = 2;
-        for(let i = 0; i < 2; i++) {
-            for (let j = 0; j < rowCount; j++) {
-                for (let k = 0; k < columnCount; k++) {
-                    let tree = generateTree();
-                    tree.position.z = j * -20;
-                    if (i == 0) {
-                        tree.position.x = randomIntFromInterval(-140, -20);
-                    } else {
-                        tree.position.x = randomIntFromInterval(20, 140);
-                    }
-                    forest.add(tree);
-                }
-            }
-        }
-        console.log(THREE.GeometryUtils.merge);
+        forest.add(trunkMesh);
+        forest.add(greeneryMesh);
         return forest;
     }
 
@@ -1114,7 +1271,7 @@
         } );
         let texture = textureLoader.load('assets/grass.jpg');
         texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(1, 100);
+        texture.repeat.set(1, 50);
         middleMaterial.map = texture;
         let mesh = new THREE.Mesh( middleGeometry, middleMaterial );
 
@@ -1131,7 +1288,7 @@
             texture = textureLoader.load('assets/soil.jpg');
             texture.wrapS = THREE.RepeatWrapping;
             texture.wrapT = THREE.RepeatWrapping;
-            texture.repeat.set(5, 100);
+            texture.repeat.set(5, 50);
             sideMaterial.map = texture;
             let sideMesh = new THREE.Mesh( sideGeometry, sideMaterial );
             sideMesh.receiveShadow = true;
@@ -1149,10 +1306,28 @@
         if (groundMeshPair[currentGroundMesh].position.z >= 0 && !groundUpdateNeeded) {
             groundUpdateNeeded = true;
             currentGroundMesh = 1 - currentGroundMesh;
+
             scene.remove(groundMeshPair[currentGroundMesh]);
-            groundMeshPair[currentGroundMesh] = createGround(-2000 + groundMeshPair[1-currentGroundMesh].position.z);
+            groundMeshPair[currentGroundMesh] = createGround(-1000 + groundMeshPair[1-currentGroundMesh].position.z);
             scene.add(groundMeshPair[currentGroundMesh]);
+
+            if (!firstGeneratedPlane) {
+                scene.remove(forestMeshPair[currentGroundMesh]);
+                forestMeshPair[currentGroundMesh].position.z = -1000;
+                scene.add(forestMeshPair[currentGroundMesh]);
+
+                placeAndRemoveObstacles(false);
+            }
+
+            firstGeneratedPlane = false;
+            /*forestMeshPair[currentGroundMesh] = forestMeshPair[1 - currentGroundMesh];
+            forestMeshPair[currentGroundMesh].position.z = 0;
+            forestMeshPair[1 - currentGroundMesh] = temp;
+            scene.add(forestMeshPair[currentGroundMesh]);*/
+
             groundUpdateNeeded = false;
+            //generateForest();
+            //forestObject.position.z = 0;
         }
     }
 
@@ -1178,8 +1353,13 @@
         // heroObject.getObjectByName("leftFoot").rotation.x += 0.01;
         //heroObject.getObjectByName("leftLeg").getObjectByName("lowerLeftLeg").rotation.x -= 0.1;
         //heroObject.getObjectByName("rightLeg").getObjectByName("lowerRightLeg").rotation.x -= 0.1;
-        groundMeshPair[0].position.z += 1;
-        groundMeshPair[1].position.z += 1;
+        groundMeshPair[0].position.z += WORLD_SPEED;
+        groundMeshPair[1].position.z += WORLD_SPEED;
+        forestMeshPair[0].position.z += WORLD_SPEED;
+        forestMeshPair[1].position.z += WORLD_SPEED;
+
+        moveObstacles();
+        collusionCheck();
 
         handleMovement();
         updateGround();
